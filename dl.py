@@ -70,7 +70,8 @@ if __name__ == "__main__":
         if el.tag == "TransakceGraf":
             rows = el.findall("Data")
             assert len(rows) > 50, len(rows)
-            for row in rows:
+            # incomplete data for the first row
+            for row in rows[1:]:
                 date_raw = row.attrib["Datum"]
                 hour = row.attrib["Hodina"]
                 count = row.attrib["Pocet"]
