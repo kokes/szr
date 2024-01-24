@@ -1,8 +1,7 @@
 import csv
-import xml.etree.ElementTree as ET
-import itertools
-import os
 import datetime as dt
+import os
+import xml.etree.ElementTree as ET
 
 DATA_URL = "https://szrcr.cz/images/Data/semafor.xml"
 AVAILABILITY_FILENAME = "dostupnost.csv"
@@ -11,21 +10,30 @@ TRANSACTIONS_FILENAME = "transakce.csv"
 AVAILABILITY_HEADER = ["od", "do", "ISZR", "ROB", "ROS", "RPP", "RUIAN", "ORG"]
 TRANSACTIONS_HEADER = ["datum", "pocet"]
 
+AVAILABILITY_KEY = ["od", "do"]
+TRANSACTIONS_KEY = ["datum"]
+
 if __name__ == "__main__":
     with open("semafor.xml", "r") as f:
         data = f.read()
 
-    availabilities = []
+    availabilities = {}
     if os.path.isfile(AVAILABILITY_FILENAME):
         with open(AVAILABILITY_FILENAME, "r") as f:
             cr = csv.DictReader(f)
-            availabilities = list(cr)
+            availabilities = {}
+            for row in cr:
+                key = tuple(row[k] for k in AVAILABILITY_KEY)
+                availabilities[key] = row
 
-    transactions = []
+    transactions = {}
     if os.path.isfile(TRANSACTIONS_FILENAME):
         with open(TRANSACTIONS_FILENAME, "r") as f:
             cr = csv.DictReader(f)
-            transactions = list(cr)
+            transactions = {}
+            for row in cr:
+                key = tuple(row[k] for k in TRANSACTIONS_KEY)
+                transactions[key] = row
 
     root = ET.fromstring(data)
     for el in root:
@@ -52,7 +60,8 @@ if __name__ == "__main__":
                 "RUIAN",
                 "ORG",
             }, availability.keys()
-            availabilities.append(availability)
+            key = tuple(availability[k] for k in AVAILABILITY_KEY)
+            availabilities[key] = availability
 
         if el.tag == "TransakceGraf":
             rows = el.findall("Data")
@@ -64,26 +73,18 @@ if __name__ == "__main__":
                 assert date_raw.endswith(" 0:00:00")
                 date = dt.datetime.strptime(date_raw.partition(" ")[0], "%d.%m.%Y")
                 date = date.replace(hour=int(hour)).isoformat()
-                transactions.append({"datum": date, "pocet": count})
+                key = (date,)
+                transactions[key] = {"datum": date, "pocet": count}
 
-    # dedupe and sort first
-    av_keyfunc = lambda x: (x["od"], x["do"])
-    availabilities.sort(key=av_keyfunc)
-    availabilities = [
-        list(j[1])[-1] for j in itertools.groupby(availabilities, key=av_keyfunc)
-    ]
-    availabilities.sort(key=av_keyfunc)
+    availabilities = list(availabilities.values())
+    availabilities.sort(key=lambda x: (x["od"], x["do"]))
     with open(AVAILABILITY_FILENAME, "w") as f:
         cw = csv.DictWriter(f, fieldnames=AVAILABILITY_HEADER)
         cw.writeheader()
         cw.writerows(availabilities)
 
-    t_keyfunc = lambda x: x["datum"]
-    transactions.sort(key=t_keyfunc)
-    transactions = [
-        list(j[1])[-1] for j in itertools.groupby(transactions, key=t_keyfunc)
-    ]
-    transactions.sort(key=t_keyfunc)
+    transactions = list(transactions.values())
+    transactions.sort(key=lambda x: x["datum"])
     with open(TRANSACTIONS_FILENAME, "w") as f:
         cw = csv.DictWriter(f, fieldnames=TRANSACTIONS_HEADER)
         cw.writeheader()
