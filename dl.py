@@ -1,7 +1,12 @@
 import csv
 import datetime as dt
 import os
+import ssl
 import xml.etree.ElementTree as ET
+from urllib.request import urlopen
+
+ssl._create_default_https_context = ssl._create_unverified_context
+
 
 DATA_URL = "https://szrcr.cz/images/Data/semafor.xml"
 AVAILABILITY_FILENAME = "dostupnost.csv"
@@ -14,8 +19,8 @@ AVAILABILITY_KEY = ["od", "do"]
 TRANSACTIONS_KEY = ["datum"]
 
 if __name__ == "__main__":
-    with open("semafor.xml", "r") as f:
-        data = f.read()
+    with urlopen(DATA_URL) as f:
+        root = ET.parse(f).getroot()
 
     availabilities = {}
     if os.path.isfile(AVAILABILITY_FILENAME):
@@ -35,7 +40,6 @@ if __name__ == "__main__":
                 key = tuple(row[k] for k in TRANSACTIONS_KEY)
                 transactions[key] = row
 
-    root = ET.fromstring(data)
     for el in root:
         if el.tag == "DostupnostRegistruProcenta":
             rows = el.findall("Data")
@@ -65,6 +69,7 @@ if __name__ == "__main__":
 
         if el.tag == "TransakceGraf":
             rows = el.findall("Data")
+            assert len(rows) > 50, len(rows)
             for row in rows:
                 date_raw = row.attrib["Datum"]
                 hour = row.attrib["Hodina"]
