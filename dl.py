@@ -18,6 +18,12 @@ TRANSACTIONS_HEADER = ["datum", "pocet"]
 AVAILABILITY_KEY = ["od", "do"]
 TRANSACTIONS_KEY = ["datum"]
 
+
+# 23.01.2024 16:44:01 -> iso
+def garbage_to_iso(s):
+    return dt.datetime.strptime(s, "%d.%m.%Y %H:%M:%S").isoformat()
+
+
 if __name__ == "__main__":
     with urlopen(DATA_URL) as f:
         root = ET.parse(f).getroot()
@@ -44,9 +50,10 @@ if __name__ == "__main__":
         if el.tag == "DostupnostRegistruProcenta":
             rows = el.findall("Data")
             assert len(rows) == 6
+            od, do = el.attrib["DostupnostOd"], el.attrib["DostupnostDo"]
             availability = {
-                "od": el.attrib["DostupnostOd"],
-                "do": el.attrib["DostupnostDo"],
+                "od": garbage_to_iso(od),
+                "do": garbage_to_iso(do),
             }
             for row in rows:
                 assert len(row.attrib) == 1, row.attrib
@@ -81,6 +88,12 @@ if __name__ == "__main__":
                 date = date.replace(hour=int(hour)).isoformat()
                 key = (date,)
                 transactions[key] = {"datum": date, "pocet": count}
+
+    # one-time cleanup
+    for k, v in availabilities.items():
+        if " " in v["od"]:
+            availabilities[k]["od"] = garbage_to_iso(v["od"])
+            availabilities[k]["do"] = garbage_to_iso(v["do"])
 
     availabilities = list(availabilities.values())
     availabilities.sort(key=lambda x: (x["od"], x["do"]))
