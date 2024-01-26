@@ -78,7 +78,9 @@ if __name__ == "__main__":
             rows = el.findall("Data")
             assert len(rows) > 50, len(rows)
             # incomplete data for the first row
-            for row in rows[1:]:
+            # also chop of the last one, which is the then-current hour
+            # and so also incomplete
+            for row in rows[1:-1]:
                 date_raw = row.attrib["Datum"]
                 hour = row.attrib["Hodina"]
                 count = row.attrib["Pocet"]
